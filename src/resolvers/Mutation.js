@@ -1,6 +1,6 @@
-const bcrypt = require('bcryptjs'); 
+const bcrypt = require('bcryptjs');
 const JWT = require('jsonwebtoken');
-const { randomBytes} = require('crypto');
+const { randomBytes } = require('crypto');
 const { promisify } = require('util');
 const { transport, makeANiceEmail } = require('../mail');
 const { hasPermission } = require('../utils');
@@ -46,11 +46,11 @@ const Mutations = {
         const hasPermissions = ctx.request.user.permissions.some(permission => ['ADMIN', 'ITEMDELETE'].includes(permission));
         if (!ownsItem && !hasPermissions) {
             throw new Error('You dont have permissions to do that');
-        } 
+        }
         //3. delete it 
         return ctx.db.mutation.deleteItem({ where }, info);
     },
-    async signup (parent, args, ctx, info) {
+    async signup(parent, args, ctx, info) {
         args.email = args.email.toLowerCase();
         //hash the password
         const password = await bcrypt.hash(args.password, 10);
@@ -73,7 +73,7 @@ const Mutations = {
         });
         return user;
     },
-    async signin(parent, {email, password}, ctx, info) {
+    async signin(parent, { email, password }, ctx, info) {
         //check if there is a user with that email 
         const user = await ctx.db.query.user({
             where: { email }
@@ -84,7 +84,7 @@ const Mutations = {
         //check if their password is correct 
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) {
-             throw new Error('Invalid Password');
+            throw new Error('Invalid Password');
         }
         //generate the JWT Token 
         const token = JWT.sign({
@@ -124,7 +124,7 @@ const Mutations = {
                 resetToken,
                 resetTokenExpiry
             }
-        });        
+        });
         //email them that reset token
         const mailResponse = await transport.sendMail({
             from: 'mail@mail.ru',
@@ -134,7 +134,7 @@ const Mutations = {
                 `Your Password Reset Token is here! 
                 \n\n 
                 <a href="${process.env.FRONTEND_URL}/reset?resetToken=${resetToken}">Click here to reset</a>`
-                )
+            )
         });
 
         return {
@@ -165,7 +165,7 @@ const Mutations = {
                 email: user.email
             },
             data: {
-                password, 
+                password,
                 resetToken: null,
                 resetTokenExpiry: null
             }
@@ -207,8 +207,54 @@ const Mutations = {
                 id: args.userId
             }
         }, info);
+    },
+    async addToCart(parent, args, ctx, info) {
+        //make sure they are logged in 
+        const { userId } = ctx.request;
+        if (!userId) {
+            throw new Error('You must be logged in');
+        }
+        //query the user current cart 
+        const [existingCartItem] = await ctx.db.query.cartItems({
+            where: {
+                user: {
+                    id: userId
+                },
+                item: {
+                    id: args.id
+                }
+            }
+
+        });
+        // check if that item already in that cart
+        if (existingCartItem) {
+            console.log('dkddk');
+            return ctx.db.mutation.updateCartItem({
+                where: {
+                    id: existingCartItem.id,
+                    data: {
+                        quantity: existingCartItem.quantity + 1
+                    }
+                }
+            }, info);
+        }
+        // create CartItem 
+        return ctx.db.mutation.createCartItem({
+            data: {
+                user: {
+                    connect: {
+                        id: userId
+                    }
+                },
+                item: {
+                    connect: {
+                        id: args.id
+                    }
+                }
+            }
+        }, info)
     }
 
- };
+};
 
 module.exports = Mutations;
