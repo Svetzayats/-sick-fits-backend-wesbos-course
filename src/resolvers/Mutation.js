@@ -228,13 +228,12 @@ const Mutations = {
         });
         // check if that item already in that cart
         if (existingCartItem) {
-            console.log('dkddk');
             return ctx.db.mutation.updateCartItem({
                 where: {
-                    id: existingCartItem.id,
-                    data: {
-                        quantity: existingCartItem.quantity + 1
-                    }
+                    id: existingCartItem.id
+                },
+                data: {
+                    quantity: existingCartItem.quantity + 1
                 }
             }, info);
         }
