@@ -44,6 +44,19 @@ const Query = {
         }
         // return the order
         return order;
+    }, 
+    async orders(parent, args, ctx, info) {
+        if (!ctx.request.userId) {
+            throw new Error('You are not logged in');
+        }
+        return ctx.db.query.orders(
+            {
+              where: {
+                user: { id: ctx.request.userId },
+              },
+            },
+            info
+          );
     }
 };
 
